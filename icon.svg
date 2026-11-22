@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="鲸娘棋局">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eaf9ff"/>
+      <stop offset="0.55" stop-color="#c7e7f6"/>
+      <stop offset="1" stop-color="#9dcde4"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdfeff"/>
+      <stop offset="1" stop-color="#dceff9"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="244" height="244" rx="58" fill="url(#bg)"/>
+  <circle cx="70" cy="66" r="9" fill="#ffffff" opacity="0.55"/>
+  <circle cx="196" cy="52" r="5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="206" cy="206" r="7" fill="#ffffff" opacity="0.35"/>
+  <path d="M52 150c0-38 30-66 72-66 44 0 74 28 74 62 0 20-12 34-30 40 12 6 22 18 28 34-22-6-38-14-48-24-8 3-16 4-25 4-42 0-71-20-71-50z" fill="url(#body)" stroke="#7fb4cf" stroke-width="3"/>
+  <path d="M188 146c18 4 30 16 34 34-16-4-27-11-33-21-1-5-1-9-1-13z" fill="#a9d6ea" stroke="#7fb4cf" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="92" cy="140" r="5" fill="#2f5b73"/>
+  <path d="M74 168c10 10 24 14 38 12" fill="none" stroke="#7fb4cf" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#2f5b73" transform="translate(150 128) scale(0.95)">
+    <path d="M22 0c-8 3-14 9-17 17-2 6-1 12 2 17l-5 9h9l3-6c4 2 9 2 13 0l3 6h9l-6-10c4-5 5-12 2-18-3-7-8-12-13-15z"/>
+    <rect x="6" y="50" width="32" height="7" rx="3"/>
+    <rect x="3" y="60" width="38" height="8" rx="3"/>
+  </g>
+  <g fill="#ffffff" opacity="0.75">
+    <circle cx="56" cy="196" r="6"/>
+    <circle cx="76" cy="212" r="4"/>
+    <circle cx="44" cy="216" r="3"/>
+  </g>
+</svg>

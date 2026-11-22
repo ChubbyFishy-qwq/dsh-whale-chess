@@ -1,0 +1,4 @@
+# 鲸娘棋局 bundle patch：把一个插件行插进 profile 的插件树
+- insert:
+    - id: dsh-whale-chess
+      name: dsh-whale-chess
