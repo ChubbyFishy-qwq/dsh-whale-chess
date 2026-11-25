@@ -1,7 +1,7 @@
 {
   "name": "dsh-whale-chess",
-  "version": "0.1.0-beta.1",
-  "description": "和鲸娘下国际象棋：海蓝棋局窗口、人格化落子、ELO 滑块、随机先手、复盘与对局记忆。",
+  "version": "0.2.0",
+  "description": "和鲸娘下国际象棋：海蓝棋局窗口、人格化落子、吃醋/傲娇/放水、ELO 滑块、随机先手、复盘与对局记忆。",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -46,10 +46,6 @@
         "@deepseek-ai/dsh-client-ui-conversation"
       ]
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChubbyFishy-qwq/dsh-whale-chess"
   },
   "icon": "./icon.svg",
   "license": "MIT"

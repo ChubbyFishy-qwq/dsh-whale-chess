@@ -1,15 +1,10 @@
 # 鲸娘棋局 · dsh-whale-chess
 
-版本：BWV26.03
-
-## 从 npm安装
+在 DSH Web 界面里和鲸娘下一盘国际象棋。当前版本：0.2.0。
 
 ```powershell
 dsh plugin --profile web add dsh-whale-chess
 ```
-##
-
-在 DSH Web 界面里和鲸娘下一盘国际象棋。
 
 - **窗口**：左侧棋盘、右侧固定鲸娘面板；柔和低饱和海蓝水体、气泡、SVG 动态表情。
 - **操作**：点选棋子再点目标格，或直接把棋子拖到目标格（鼠标 / 触摸均可）。按下棋子就亮出合法落点，拖起来有跟手的半透明棋子，松手先飞到落点再落盘。
@@ -31,6 +26,15 @@ dsh plugin --profile web add dsh-whale-chess
   `evalSummary` 只进 console 内部日志。内心独白、persona 原文、记忆原始记录
   不会出现在气泡里，也不会写入会话。
 
+## 算子：本地 / 大模型
+
+面板「算子」一行可切换：
+
+- **本地**（默认）：完全离线，纯 JS 引擎，按 ELO 控制搜索深度与候选池。
+- **大模型**：落子前把局面和候选发给 Host 的 `/dsh-whale-chess/move`，由当前默认模型（如 deepseek-flash）从候选里选一手并生成台词/动作，客户端再用本地规则校验一次。
+
+候选会按 ELO 收窄：高段只给前 3 个，中段前 6 个，低段故意给中下游着法，所以“等级区分”在大模型模式下仍然成立。模型超时（12–15 秒）、返回非法着法或服务不可用时，自动回落到本地引擎，不中断对局。每次大模型落子会产生一次模型调用（约 2–8 秒、消耗 token）。
+
 ## 棋力滑块（ELO 100–1700）
 
 面板下方是一条 100–1700 的滑块，每 50 一档，实时换算成：
@@ -47,7 +51,7 @@ dsh plugin --profile web add dsh-whale-chess
 
 ## 安装
 
-**从 npm**
+**从 npm（发布后）**
 
 ```powershell
 dsh plugin --profile web add dsh-whale-chess
@@ -59,9 +63,9 @@ dsh plugin --profile web add dsh-whale-chess
 # 目录
 dsh plugin --profile web add <本目录绝对路径>
 # 或者 npm 包
-dsh plugin --profile web add ./dist/dsh-whale-chess-1.0.0.tgz
-# 或者 GitHub Release 的 zip（解压后得到 dsh-whale-chess-1.0.0/）
-dsh plugin --profile web add ./dsh-whale-chess-1.0.0
+dsh plugin --profile web add ./dist/dsh-whale-chess-0.2.0.tgz
+# 或者 GitHub Release 的 zip（解压后得到 dsh-whale-chess-0.2.0/）
+dsh plugin --profile web add ./dsh-whale-chess-0.2.0
 ```
 
 安装后在 DSH Web 底部状态栏点「和鲸娘下棋」开窗（首次安装会自动开一次）。
@@ -88,3 +92,4 @@ node test/brain.mjs    # 人格因子 / 决策 / 台词
 ## 许可
 
 MIT。角色与美术为本插件原创 SVG。
+

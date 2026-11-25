@@ -201,6 +201,13 @@ const WHALE_CHESS_CSS = `
 }
 
 
+
+.wc-operator{position:relative;z-index:1;display:flex;align-items:center;gap:5px;padding:0 3px}
+.wc-op-label{font-size:10.5px;color:#5c849a;letter-spacing:.04em;flex:0 0 auto;margin-right:1px}
+.wc-op-btn{flex:1;height:25px;border-radius:8px;border:1px solid rgba(120,170,192,.32);background:rgba(255,255,255,.55);color:#4a768c;font:500 10.5px/1 inherit;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.wc-op-btn:hover{background:#fff}
+.wc-op-btn.on{background:linear-gradient(180deg,#9adcf2,#6ec0e0);border-color:rgba(70,150,180,.5);color:#0d3446;box-shadow:0 3px 8px rgba(26,80,104,.15)}
+
 /* ---------------- 棋力滑块 / 复盘 / 拖拽动画 ---------------- */
 .wc-stage--pet{cursor:pointer}
 .wc-stage--pet .wc-whale{transition:transform .18s ease,filter .18s ease}
@@ -323,6 +330,11 @@ const WHALE_CHESS_CSS = `
 .wc-dark .wc-replay-count{color:#8fb2c2}
 .wc-dark .wc-replay-ply{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#a9c6d4}
 .wc-dark .wc-replay-ply.on{background:linear-gradient(180deg,#3f93b3,#2c728f);border-color:rgba(120,200,225,.4);color:#eaf7ff}
+
+.wc-dark .wc-op-label{color:#8fb2c2}
+.wc-dark .wc-op-btn{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#a9c6d4}
+.wc-dark .wc-op-btn:hover{background:rgba(255,255,255,.12)}
+.wc-dark .wc-op-btn.on{background:linear-gradient(180deg,#3f93b3,#2c728f);border-color:rgba(120,200,225,.4);color:#eaf7ff;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 `;
 
 
@@ -2213,6 +2225,7 @@ const WhaleChessUI = (() => {
     const LS_LEVEL = 'dsh-whale-chess.level.v1';
     const LS_ELO = 'dsh-whale-chess.elo.v2';
     const LS_LAST = 'dsh-whale-chess.lastgame.v1';
+    const LS_MODE = 'dsh-whale-chess.operator.v1';
 
     /* ------------------------------------------------------ 共享开关状态 */
 
@@ -2291,6 +2304,18 @@ const WhaleChessUI = (() => {
       try { localStorage.setItem(LS_ELO, String(elo)); } catch (e) { /* ignore */ }
     }
 
+    function loadMode() {
+      try {
+        return localStorage.getItem(LS_MODE) === 'model' ? 'model' : 'engine';
+      } catch (e) {
+        return 'engine';
+      }
+    }
+
+    function saveMode(mode) {
+      try { localStorage.setItem(LS_MODE, mode === 'model' ? 'model' : 'engine'); } catch (e) { /* ignore */ }
+    }
+
     function loadLastGame() {
       try {
         const raw = JSON.parse(localStorage.getItem(LS_LAST) || 'null');
@@ -2327,6 +2352,9 @@ const WhaleChessUI = (() => {
       talk: '说说话',
       undo: '悔棋',
       draw: '求和',
+      operator: '算子',
+      op_engine: '本地',
+      op_model: '大模型',
       white: '白方',
       black: '黑方',
       replay: '复盘',
@@ -2387,6 +2415,9 @@ const WhaleChessUI = (() => {
       talk: 'Talk',
       undo: 'Undo',
       draw: 'Offer draw',
+      operator: 'Engine',
+      op_engine: 'Local',
+      op_model: 'LLM',
       white: 'White',
       black: 'Black',
       replay: 'Replay',
@@ -2484,6 +2515,7 @@ const WhaleChessUI = (() => {
         captured: [],
         playerColor,
         elo: opts.elo || loadElo(),
+        mode: opts.mode === 'model' ? 'model' : opts.mode === 'engine' ? 'engine' : loadMode(),
         firstPlayerUci: '',
         whaleReply: '',
       };
@@ -2909,6 +2941,50 @@ const WhaleChessUI = (() => {
             h('button', { className: 'wc-btn wc-btn--primary', type: 'button', onClick: onClose }, t('close')))));
     }
 
+    /* --------------------------------------------------------- 大模型算子 */
+
+    // 给模型的候选：高段只给前三，低段故意给中下游，保证 ELO 区分真实存在
+    function candidatesForModel(ranked, elo) {
+      if (elo >= 1500) return ranked.slice(0, 3);
+      if (elo >= 900) return ranked.slice(0, 6);
+      const weak = ranked.slice(3, 10);
+      return weak.length >= 2 ? weak : ranked.slice(0, 6);
+    }
+
+    async function requestModelMove(game, ranked) {
+      const candidates = candidatesForModel(ranked, game.elo).map((c) => ({
+        san: c.san,
+        rank: c.rank,
+        tags: c.tags || [],
+      }));
+      if (!candidates.length) return { ok: false, error: 'no-candidates' };
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch('/dsh-whale-chess/move', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-whale-chess': '1' },
+          body: JSON.stringify({
+            fen: WhaleChessRules.toFEN(game.chess),
+            history: game.history.slice(-12).map((m) => m.san),
+            playerColor: game.playerColor,
+            elo: game.elo,
+            mood: game.whaleState.mood || '温柔',
+            candidates,
+          }),
+          signal: controller.signal,
+        });
+        if (!response.ok) return { ok: false, error: 'http-' + response.status };
+        const data = await response.json();
+        if (data && data.ok && data.san) return data;
+        return { ok: false, error: (data && data.error) || 'bad-response' };
+      } catch (err) {
+        return { ok: false, error: 'request-failed' };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     /* -------------------------------------------------------------- 主窗口 */
 
     function GameWindow() {
@@ -3101,9 +3177,9 @@ const WhaleChessUI = (() => {
         setGame((prev) => ({
           ...prev,
           thinking: true,
-          bubble: { text: '嗯……让本鱼看看。', key: 'think', nonce: nowNonce() },
+          bubble: { text: g.mode === 'model' ? '让本鱼好好想想……' : '嗯……让本鱼看看。', key: 'think', nonce: nowNonce() },
         }));
-        setTimeout(() => {
+        setTimeout(async () => {
           if (thinkToken.current !== token) return;
           const cur = gameRef.current;
           if (!cur || cur.result || cur.chess.turn === cur.playerColor) return;
@@ -3119,6 +3195,22 @@ const WhaleChessUI = (() => {
             setGame((prev) => ({ ...prev, thinking: false }));
             return;
           }
+
+          if (cur.mode === 'model') {
+            const modelOut = await requestModelMove(cur, ranked.candidates);
+            if (thinkToken.current !== token) return;
+            const live = gameRef.current;
+            if (!live || live.result || live.chess.turn === live.playerColor) return;
+            if (modelOut && modelOut.ok) {
+              const move = WhaleChessRules.findMoveBySAN(live.chess, modelOut.san);
+              if (move) {
+                commitMove(move, { speech: modelOut.speech, animationKey: modelOut.animationKey });
+                return;
+              }
+            }
+            console.warn('[whale-chess] model fallback:', modelOut && modelOut.error);
+          }
+
           const out = WhaleBrain.decide({
             ranked: ranked.candidates,
             state: cur.chess,
@@ -3213,7 +3305,7 @@ const WhaleChessUI = (() => {
         const memory = g.memory;
         const playerColor = Math.random() < 0.5 ? 'w' : 'b';
         const greeting = WhaleBrain.startLine(playerColor);
-        const ng = createGame(g.whaleState, memory, greeting, { playerColor, elo: g.elo });
+        const ng = createGame(g.whaleState, memory, greeting, { playerColor, elo: g.elo, mode: g.mode });
         setGame(ng);
         notify(greeting + (playerColor === 'b' ? ' 本鱼先走。' : ''));
         if (playerColor === 'b') scheduleWhale(ng);
@@ -3352,6 +3444,17 @@ const WhaleChessUI = (() => {
         });
       }, []);
 
+      const setMode = useCallback((mode) => {
+        const g = gameRef.current;
+        saveMode(mode);
+        const line = mode === 'model' ? '大模型算子……本鱼会想久一点。' : '还是本机算得顺手。';
+        setGame({
+          ...g,
+          mode,
+          bubble: { text: line, key: mode === 'model' ? 'smug' : 'move', nonce: nowNonce() },
+        });
+      }, []);
+
       const openReplay = useCallback(() => {
         const record = loadLastGame();
         const built = buildReplay(record);
@@ -3445,6 +3548,10 @@ const WhaleChessUI = (() => {
             'aria-label': t('level'),
           }),
           h('div', { className: 'wc-elo-scale' }, h('span', null, '100'), h('span', null, '900'), h('span', null, '1700'))),
+        h('div', { className: 'wc-operator' },
+          h('span', { className: 'wc-op-label' }, t('operator')),
+          h('button', { className: 'wc-op-btn' + (game.mode === 'engine' ? ' on' : ''), type: 'button', onClick: () => setMode('engine') }, t('op_engine')),
+          h('button', { className: 'wc-op-btn' + (game.mode === 'model' ? ' on' : ''), type: 'button', onClick: () => setMode('model') }, t('op_model'))),
         h('div', { className: 'wc-actions' },
           h('button', { className: 'wc-btn', type: 'button', onClick: pet, disabled: Boolean(game.result) }, t('pet')),
           h('button', { className: 'wc-btn', type: 'button', onClick: talk, disabled: Boolean(game.result) }, t('talk')),
